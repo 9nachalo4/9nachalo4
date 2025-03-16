@@ -1,10 +1,11 @@
 body {
     font-family: Arial, sans-serif;
     text-align: center;
-    padding: 10px;
+}
+.zoom-controls {
+    margin: 10px;
 }
 canvas {
     max-width: 100%;
-    height: auto;
-    margin-top: 20px;
+    height: 80vh;
 }

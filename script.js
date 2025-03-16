@@ -1,70 +1,75 @@
-document.getElementById("fileInput").addEventListener("change", function(event) {
+document.getElementById('fileInput').addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const lines = e.target.result.split("\n").filter(line => line.trim() !== "");
-        const labels = [];
-        const datasets = {
-            "Реактор 1": { data: [], color: "orange" },
-            "Реактор 2": { data: [], color: "red" },
-            "Реактор 3": { data: [], color: "pink" },
-            "Куб": { data: [], color: "magenta" },
-            "Холодильник": { data: [], color: "blue" }
-        };
+        const lines = e.target.result.split('\n').filter(line => line.trim() !== '');
+        const timeLabels = [];
+        const datasets = {};
 
         lines.forEach(line => {
-            const parts = line.split(" --- ");
-            if (parts.length < 6) return;
+            const parts = line.split(' --- ');
+            const time = parts[0].trim();
+            if (!timeLabels.includes(time)) timeLabels.push(time);
 
-            labels.push(parts[0].trim()); // Время
-
-            Object.keys(datasets).forEach((key, index) => {
-                const match = parts[index + 1].match(/[-+]?\d*\.\d+/);
-                if (match) {
-                    datasets[key].data.push(parseFloat(match[0]));
-                }
+            parts.slice(1).forEach(part => {
+                const [name, value] = part.split(': ');
+                const temp = parseFloat(value);
+                if (!datasets[name]) datasets[name] = [];
+                datasets[name].push(temp);
             });
         });
 
-        createChart(labels, datasets);
+        const ctx = document.getElementById('chartCanvas').getContext('2d');
+        if (window.myChart) window.myChart.destroy();
+
+        window.myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: Object.keys(datasets).map((key, i) => ({
+                    label: key,
+                    data: datasets[key],
+                    borderColor: ['red', 'blue', 'green', 'orange', 'purple'][i % 5],
+                    fill: false,
+                    pointRadius: 3,
+                    pointHoverRadius: 6
+                }))
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { ticks: { autoSkip: true, maxRotation: 45, minRotation: 45 } },
+                    y: { beginAtZero: false }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return tooltipItem.dataset.label + ': ' + tooltipItem.raw + '°C';
+                            }
+                        }
+                    }
+                }
+            }
+        });
     };
     reader.readAsText(file);
 });
 
-function createChart(labels, datasets) {
-    const ctx = document.getElementById("chartCanvas").getContext("2d");
+function zoomIn() {
     if (window.myChart) {
-        window.myChart.destroy();
+        window.myChart.options.scales.x.min += 1;
+        window.myChart.options.scales.x.max -= 1;
+        window.myChart.update();
     }
+}
 
-    window.myChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: labels,
-            datasets: Object.keys(datasets).map(key => ({
-                label: key,
-                data: datasets[key].data,
-                borderColor: datasets[key].color,
-                fill: false,
-                pointRadius: 2,
-                pointHoverRadius: 6
-            }))
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { title: { display: true, text: "Время" } },
-                y: { title: { display: true, text: "Температура (°C)" }, suggestedMin: 0, suggestedMax: 50 }
-            },
-            plugins: {
-                zoom: {
-                    pan: { enabled: true, mode: "xy" },
-                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "xy" }
-                }
-            }
-        }
-    });
+function zoomOut() {
+    if (window.myChart) {
+        window.myChart.options.scales.x.min -= 1;
+        window.myChart.options.scales.x.max += 1;
+        window.myChart.update();
+    }
 }
