@@ -5,16 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>График данных</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        canvas { max-width: 100%; height: auto; }
+    </style>
 </head>
 <body>
-
-    <h2>Загрузите .txt файл</h2>
+    <h2>Загрузите файл с данными:</h2>
     <input type="file" id="fileInput">
+    <button onclick="loadFile()">Построить график</button>
     <canvas id="chartCanvas"></canvas>
 
-    <script src="script.js"></script>
+    <script>
+        let chart;
 
+        function loadFile() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files.length) {
+                alert("Выберите файл!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                processData(event.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        function processData(data) {
+            const lines = data.split("\n");
+            const labels = [];
+            const datasets = [];
+            const colors = ["red", "green", "blue", "orange", "purple"];
+
+            const headers = lines[0].split("\t");
+            for (let i = 1; i < headers.length; i++) {
+                datasets.push({
+                    label: headers[i],
+                    borderColor: colors[i - 1] || "black",
+                    borderWidth: 1,
+                    fill: false,
+                    pointRadius: 3,
+                    data: []
+                });
+            }
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split("\t");
+                if (values.length < 2) continue;
+                labels.push(values[0]);
+
+                for (let j = 1; j < values.length; j++) {
+                    datasets[j - 1].data.push({ x: values[0], y: parseFloat(values[j]) });
+                }
+            }
+
+            renderChart(labels, datasets);
+        }
+
+        function renderChart(labels, datasets) {
+            const ctx = document.getElementById("chartCanvas").getContext("2d");
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: "line",
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: "linear", title: { display: true, text: "Время" } },
+                        y: { title: { display: true, text: "Значение" } }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: { enabled: true, mode: "x" },
+                            zoom: { enabled: true, mode: "x" }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Время: ${context.raw.x}, Значение: ${context.raw.y}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>
